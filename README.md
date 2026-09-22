@@ -62,6 +62,22 @@ Engine.  We will be using a default Debian build as our virtual
 machine OS for the timing runs, and the most recent Rust version at
 the time of this posting (1.98.1).
 
+Scoring will involve a writeup and a performance component.
+There are eight questions in the `WRITEUP.md`; that file should be
+completed with your answers.  There is also one point for submitting
+a crate that compiles (the autograder will do some basic correctness
+checks, but not for a score).
+
+Performance scoring thresholds (C4D and the `enable1` dictionary)
+
+| Score (of 2) | Blocked | Packed | SWAR |
+|--------------|---------|--------|------|
+| 3            | 175s    | 140s   | 70s  |
+| 2            | 185s    | 150s   | 80s  |
+| 1            | 195s    | 160s   | 90s  |
+
+No credit will be given for code that computes the wrong answers.
+
 ## Steps
 
 Steps 0-1 should be completed by 9/21 at 11:59 PM.  The remaining
