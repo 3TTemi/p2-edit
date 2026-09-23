@@ -8,6 +8,9 @@
 
 ## Changelog
 
+2026-09-23:
+- Fix XXX placeholders.
+
 2026-09-17:
 - Fix typo and broken link in step 3
 
@@ -121,14 +124,14 @@ there is a penalty for dealing with variable length strings and
 Unicode encodings.  None of these penalties are that large, but they
 are all in an inner loop!
 
-Complete the function `XXX` to convert the `Vec<String>` dictionary
+Complete the function `pack_dict` to convert the `Vec<String>` dictionary
 into a dictionary where the data is stored inline (vs storing a
 pointer to a heap-allocated string).  You may assume that the words in
 the `Vec<String>` have already been normalized such that they consist
 of ASCII-encoded lower-case letters.  You should make sure that you
 can accommodate the longest strings in the `enable1.txt` dictionary,
 but you do not necessarily need to accommodate anything longer.  You
-should also complete the `XXX` function so that it computes the
+should also complete the `mean_dist` function so that it computes the
 Hamming distance based on your new coding.
 
 1. What is the speed difference compared to the method in step 2?
