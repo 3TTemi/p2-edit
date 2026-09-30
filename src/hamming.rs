@@ -41,12 +41,27 @@ pub mod block_str {
     /// Compute vector of mean distances for all strings (you may change
     /// the interface if you want)
     fn block_updates(d1: &[String], d2: &[String], counts: &mut [isize]) {
-        todo!()
+        for (w1, count) in d1.iter().zip(counts.iter_mut()) {
+            for w2 in d2 {
+                *count += dist(w1, w2);
+            }
+        }
     }
 
     /// Blocked computation
     pub fn mean_dists(dict: &[String]) -> Vec<f64> {
-        todo!();
+        let mut counts = vec![0; dict.len()];
+        // Reuse each small pair of dictionary blocks before moving on.
+        // chunks() also handles a final block with fewer than BSIZE words.
+        for (d1, block_counts) in dict.chunks(BSIZE).zip(counts.chunks_mut(BSIZE)) {
+            for d2 in dict.chunks(BSIZE) {
+                block_updates(d1, d2, block_counts);
+            }
+        }
+        counts
+            .iter()
+            .map(|count| (*count as f64) / (dict.len() as f64))
+            .collect()
     }
 
     pub fn mean_dists_dict(dict: &[String]) -> Vec<f64> {
@@ -147,4 +162,31 @@ mod test {
     }
 
     // TODO: Add your own module tests!
+    #[test]
+    fn test_blocked_edge_cases() {
+        use super::block_str::mean_dists;
+        assert!(mean_dists(&[]).is_empty());
+        assert_eq!(mean_dists(&["word".to_string()]), vec![0.0]);
+        let dict: Vec<String> = ["", "a", "aa", "a"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(mean_dists(&dict), vec![1.0, 0.5, 1.0, 0.5]);
+    }
+
+    #[test]
+    fn test_blocked_matches_naive_across_block_boundaries() {
+        // Cover a partial block, an exact block, and multiple blocks with a tail.
+        for len in [499, 500, 501, 1003] {
+            let dict: Vec<String> = (0..len)
+                .map(|i| {
+                    (0..i % 29)
+                        .map(|j| (b'a' + ((i * 7 + j * 11) % 26) as u8) as char)
+                        .collect()
+                })
+                .collect();
+            assert_eq!(
+                super::block_str::mean_dists(&dict),
+                super::basic_str::mean_dists(&dict),
+                "dictionary length {len}"
+            );
+        }
+    }
 }
