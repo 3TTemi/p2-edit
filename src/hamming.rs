@@ -101,7 +101,7 @@ pub mod basic_word {
             .sum()
     }
 
-    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) {
+    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) { // i think we can factor this out
         for (w1, count) in d1.iter().zip(counts.iter_mut()) {
             for w2 in d2 {
                 *count += dist(w1, w2);
@@ -136,22 +136,52 @@ pub mod swar_word {
     /// Word storage
     pub struct Word([u32; 6]); // You may change the internals (eg [u64; 3])
 
+    const BSIZE: usize = 500;
+
+    const LOW: u32 = 0b011111_011111_011111_011111_011111;
+    const HIGH: u32 = 0b100000_100000_100000_100000_100000;
+
     impl Word {
         /// Create packed word
         pub fn new(s: &str) -> Self {
-            todo!()
+            let mut w = [0u32; 6];
+            for (i, b) in s.bytes().enumerate() {
+                w[i / 5] |= ((b - b'a' + 1) as u32) << (6 * (i % 5));
+            }
+            Word(w)
         }
     }
 
     /// Compute the Hamming distance between two Words
-    fn dist(w1: &Word, w2: &Word) -> isize {
-        // You may change the signature
-        todo!()
+    pub(crate) fn dist(w1: &Word, w2: &Word) -> isize {
+        let mut flags = 0u32;
+        for i in 0..6 {
+            let x = w1.0[i] ^ w2.0[i];
+            flags += ((x + LOW) & HIGH) >> 5;
+        }
+        (flags % 63) as isize
+    }
+
+    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) { // i think we can factor this out
+        for (w1, count) in d1.iter().zip(counts.iter_mut()) {
+            for w2 in d2 {
+                *count += dist(w1, w2);
+            }
+        }
     }
 
     /// Compute vector of mean distances for all words (pre-packed)
     pub fn mean_dists(dict: &[Word]) -> Vec<f64> {
-        todo!()
+        let mut counts = vec![0; dict.len()];
+        for (d1, block_counts) in dict.chunks(BSIZE).zip(counts.chunks_mut(BSIZE)) {
+            for d2 in dict.chunks(BSIZE) {
+                block_updates(d1, d2, block_counts);
+            }
+        }
+        counts
+            .iter()
+            .map(|count| (*count as f64) / (dict.len() as f64))
+            .collect()
     }
 
     /// Re-pack the dictionary in more condensed form
@@ -215,6 +245,11 @@ mod test {
                 super::basic_str::mean_dists(&dict),
                 "packed dictionary length {len}"
             );
+            assert_eq!(
+                super::swar_word::mean_dists_dict(&dict),
+                super::basic_str::mean_dists(&dict),
+                "swar dictionary length {len}"
+            );
         }
     }
 
@@ -225,5 +260,14 @@ mod test {
         assert_eq!(dist(&Word::new("aaaaa"), &Word::new("aa")), 3);
         assert_eq!(dist(&Word::new("test"), &Word::new("tilt")), 2);
         assert_eq!(dist(&Word::new("true"), &Word::new("truth")), 2);
+    }
+
+    #[test]
+    fn test_swar_dist() {
+        use super::swar_word::{Word, dist};
+        assert_eq!(dist(&Word::new("aa"), &Word::new("aaaaa")), 3);
+        assert_eq!(dist(&Word::new("test"), &Word::new("tilt")), 2);
+        assert_eq!(dist(&Word::new("aaaaaa"), &Word::new("aaaabb")), 2);
+        assert_eq!(dist(&Word::new("zzzzz"), &Word::new("aaaaa")), 5);
     }
 }
