@@ -73,6 +73,7 @@ pub mod block_str {
 pub mod basic_word {
 
     const WSIZE: usize = 28; // You may want to fiddle with this
+    const BSIZE: usize = 500;
 
     /// Word storage
     pub struct Word([u8; WSIZE]);
@@ -80,7 +81,10 @@ pub mod basic_word {
     impl Word {
         /// Create a Word from a string
         pub fn new(s: &str) -> Self {
-            todo!()
+            let bytes = s.as_bytes();
+            let mut w = [0u8; WSIZE];
+            w[..bytes.len()].copy_from_slice(bytes);
+            Word(w)
         }
     }
 
@@ -90,14 +94,33 @@ pub mod basic_word {
     }
 
     /// Compute the Hamming distance between two Words
-    fn dist(w1: &Word, w2: &Word) -> isize {
-        // You may change the output type
-        todo!()
+    pub(crate) fn dist(w1: &Word, w2: &Word) -> isize {
+        w1.0.iter()
+            .zip(w2.0.iter())
+            .map(|(c1, c2)| (c1 != c2) as isize)
+            .sum()
+    }
+
+    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) {
+        for (w1, count) in d1.iter().zip(counts.iter_mut()) {
+            for w2 in d2 {
+                *count += dist(w1, w2);
+            }
+        }
     }
 
     /// Compute vector of mean distances for all words (pre-packed)
     pub fn mean_dists(dict: &[Word]) -> Vec<f64> {
-        todo!()
+        let mut counts = vec![0; dict.len()];
+        for (d1, block_counts) in dict.chunks(BSIZE).zip(counts.chunks_mut(BSIZE)) {
+            for d2 in dict.chunks(BSIZE) {
+                block_updates(d1, d2, block_counts);
+            }
+        }
+        counts
+            .iter()
+            .map(|count| (*count as f64) / (dict.len() as f64))
+            .collect()
     }
 
     /// Compute vector of mean distances for all words    
@@ -187,6 +210,20 @@ mod test {
                 super::basic_str::mean_dists(&dict),
                 "dictionary length {len}"
             );
+            assert_eq!(
+                super::basic_word::mean_dists_dict(&dict),
+                super::basic_str::mean_dists(&dict),
+                "packed dictionary length {len}"
+            );
         }
+    }
+
+    #[test]
+    fn test_packed_dist() {
+        use super::basic_word::{Word, dist};
+        assert_eq!(dist(&Word::new("aa"), &Word::new("aaaaa")), 3);
+        assert_eq!(dist(&Word::new("aaaaa"), &Word::new("aa")), 3);
+        assert_eq!(dist(&Word::new("test"), &Word::new("tilt")), 2);
+        assert_eq!(dist(&Word::new("true"), &Word::new("truth")), 2);
     }
 }
