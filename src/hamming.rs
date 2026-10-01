@@ -101,7 +101,7 @@ pub mod basic_word {
             .sum()
     }
 
-    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) { // i think we can factor this out
+    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) {
         for (w1, count) in d1.iter().zip(counts.iter_mut()) {
             for w2 in d2 {
                 *count += dist(w1, w2);
@@ -162,7 +162,7 @@ pub mod swar_word {
         (flags % 63) as isize
     }
 
-    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) { // i think we can factor this out
+    fn block_updates(d1: &[Word], d2: &[Word], counts: &mut [isize]) {
         for (w1, count) in d1.iter().zip(counts.iter_mut()) {
             for w2 in d2 {
                 *count += dist(w1, w2);
@@ -198,8 +198,42 @@ pub mod swar_word {
 /// Step 4: Optimized version!
 pub mod optimized {
 
+    use super::swar_word::{Word, dist};
+
+    const BSIZE: usize = 500;
+
+    pub fn mean_dists(dict: &[Word]) -> Vec<f64> {
+        let n = dict.len();
+        let mut counts = vec![0; n];
+        for lo1 in (0..n).step_by(BSIZE) {
+            let hi1 = (lo1 + BSIZE).min(n);
+            for lo2 in (lo1..n).step_by(BSIZE) {
+                let hi2 = (lo2 + BSIZE).min(n);
+                for i in lo1..hi1 {
+                    let start = if lo1 == lo2 { i + 1 } else { lo2 };
+                    let mut sum = 0;
+                    for (w2, count) in dict[start..hi2].iter().zip(&mut counts[start..hi2]) {
+                        let d = dist(&dict[i], w2);
+                        sum += d;
+                        *count += d;
+                    }
+                    counts[i] += sum;
+                }
+            }
+        }
+        counts
+            .iter()
+            .map(|count| (*count as f64) / (n as f64))
+            .collect()
+    }
+
+    fn pack_dict(dict: &[String]) -> Vec<Word> {
+        dict.iter().map(|s| Word::new(s)).collect()
+    }
+
     pub fn mean_dists_dict(dict: &[String]) -> Vec<f64> {
-        todo!()
+        let pdict = pack_dict(dict);
+        mean_dists(&pdict)
     }
 }
 
@@ -249,6 +283,11 @@ mod test {
                 super::swar_word::mean_dists_dict(&dict),
                 super::basic_str::mean_dists(&dict),
                 "swar dictionary length {len}"
+            );
+            assert_eq!(
+                super::optimized::mean_dists_dict(&dict),
+                super::basic_str::mean_dists(&dict),
+                "optimized dictionary length {len}"
             );
         }
     }
