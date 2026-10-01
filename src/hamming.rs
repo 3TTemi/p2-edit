@@ -72,7 +72,7 @@ pub mod block_str {
 /// Step 2: Removing indirection
 pub mod basic_word {
 
-    const WSIZE: usize = 29;
+    const WSIZE: usize = 28;
     const BSIZE: usize = 500;
 
     /// Word storage
@@ -83,8 +83,7 @@ pub mod basic_word {
         pub fn new(s: &str) -> Self {
             let bytes = s.as_bytes();
             let mut w = [0u8; WSIZE];
-            w[0] = bytes.len() as u8;
-            w[1..=bytes.len()].copy_from_slice(bytes);
+            w[..bytes.len()].copy_from_slice(bytes);
             Word(w)
         }
     }
@@ -96,10 +95,8 @@ pub mod basic_word {
 
     /// Compute the Hamming distance between two Words
     pub(crate) fn dist(w1: &Word, w2: &Word) -> isize {
-        let n = w1.0[0].max(w2.0[0]) as usize;
-        w1.0[1..=n]
-            .iter()
-            .zip(w2.0[1..=n].iter())
+        w1.0.iter()
+            .zip(w2.0.iter())
             .map(|(c1, c2)| (c1 != c2) as isize)
             .sum()
     }
